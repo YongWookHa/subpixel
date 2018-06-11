@@ -18,11 +18,10 @@ def doresize(x, shape):
 class DCGAN(object):
     def __init__(self, sess,
                  image_size=128,
-                 is_crop=True,
                  batch_size=64,
                  image_shape,
                  y_dim=None,
-                 z_dim=120,
+                 z_dim=100,
                  gf_dim=64,
                  df_dim=64,
                  gfc_dim=1024,
@@ -41,10 +40,8 @@ class DCGAN(object):
             df_dim: (optional) Dimension of discrim filters in first conv layer. [64]
             gfc_dim: (optional) Dimension of gen untis for for fully connected layer. [1024]
             dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
-            c_dim: (optional) Dimension of image color. [3]
         """
         self.sess = sess
-        self.is_crop = is_crop
         self.batch_size = batch_size
         self.image_size = image_size
         self.input_size = 32
@@ -60,8 +57,6 @@ class DCGAN(object):
 
         self.gfc_dim = gfc_dim
         self.dfc_dim = dfc_dim
-
-        self.c_dim = 3
 
         self.checkpoint_dir = checkpoint_dir
         self.build_model()
@@ -114,7 +109,7 @@ class DCGAN(object):
         self.writer = tf.train.SummaryWriter("./logs", self.sess.graph)
 
         sample_files = data[0:self.sample_size]
-        sample = [get_image(sample_file, self.image_size, is_crop=self.is_crop) for sample_file in sample_files]
+        sample = [get_image(sample_file, self.image_size) for sample_file in sample_files]
         sample_inputs = [doresize(xx, [self.input_size,]*2) for xx in sample]
         sample_images = np.array(sample).astype(np.float32)
         sample_input_images = np.array(sample_inputs).astype(np.float32)
@@ -139,7 +134,7 @@ class DCGAN(object):
 
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*config.batch_size:(idx+1)*config.batch_size]
-                batch = [get_image(batch_file, self.image_size, is_crop=self.is_crop) for batch_file in batch_files]
+                batch = [get_image(batch_file, self.image_size) for batch_file in batch_files]
                 input_batch = [doresize(xx, [self.input_size,]*2) for xx in batch]
                 batch_images = np.array(batch).astype(np.float32)
                 batch_inputs = np.array(input_batch).astype(np.float32)

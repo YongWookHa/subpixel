@@ -16,10 +16,9 @@ flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
 flags.DEFINE_integer("image_size", 128, "The size of image to use (will be center cropped) [108]")
 flags.DEFINE_integer("image_shape", [128, 128, 3], "The shape of input images")
 flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
-flags.DEFINE_string("dataset_name", "FERET", "Directory name to save the checkpoints [checkpoint]")
+flags.DEFINE_string("dataset_name", "FERET", "name of data set to use")
 flags.DEFINE_string("sample_dir", "samples", "Directory name to save the image samples [samples]")
 flags.DEFINE_boolean("is_train", False, "True for training, False for testing [False]")
-flags.DEFINE_boolean("is_crop", False, "True for training, False for testing [False]")
 flags.DEFINE_boolean("visualize", False, "True for visualizing, False for nothing [False]")
 FLAGS = flags.FLAGS
 
@@ -35,8 +34,7 @@ def main(_):
         dcgan = DCGAN(sess,
                       image_size=FLAGS.image_size,
                       batch_size=FLAGS.batch_size,
-                      is_crop=FLAGS.is_crop,
-                      dataset_name=FLAGS.dataset_name
+                      dataset_name=FLAGS.dataset_name,
                       checkpoint_dir=FLAGS.checkpoint_dir)
 
         if FLAGS.is_train:
