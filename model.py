@@ -16,18 +16,17 @@ def doresize(x, shape):
     return y
 
 class DCGAN(object):
-    def __init__(self, sess,
-                 image_size=128,
-                 batch_size=64,
-                 image_shape,
+    def __init__(self,sess,
+                 image_size,
+                 batch_size,
+                 image_shape=[128, 128, 3],
                  y_dim=None,
                  z_dim=100,
                  gf_dim=64,
                  df_dim=64,
                  gfc_dim=1024,
                  dfc_dim=1024,
-                 c_dim=3,
-                 dataset_name=None,
+                 dataset=None,
                  checkpoint_dir=None):
         """
 
@@ -47,7 +46,7 @@ class DCGAN(object):
         self.input_size = 32
         self.sample_size = batch_size
         self.image_shape = image_shape
-        self.dataset_name = dataset_name
+        self.dataset = dataset
 
         self.y_dim = y_dim
         self.z_dim = z_dim
@@ -83,11 +82,11 @@ class DCGAN(object):
 
         self.G = self.generator(self.inputs)
 
-        self.G_sum = tf.image_summary("G", self.G)
+        self.G_sum = tf.summary.image("G", self.G)
 
         self.g_loss = tf.reduce_mean(tf.square(self.images-self.G))
 
-        self.g_loss_sum = tf.scalar_summary("g_loss", self.g_loss)
+        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
 
         t_vars = tf.trainable_variables()
 
@@ -98,15 +97,15 @@ class DCGAN(object):
     def train(self, config):
         """Train DCGAN"""
         # first setup validation data
-        data = sorted(glob(os.path.join("./data", config.dataset, "valid", "*.jpg")))
+        data = sorted(glob(os.path.join("./dataset", config.dataset, "valid", "*.jpg")))
 
         g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
                           .minimize(self.g_loss, var_list=self.g_vars)
         tf.initialize_all_variables().run()
 
         self.saver = tf.train.Saver()
-        self.g_sum = tf.merge_summary([self.G_sum, self.g_loss_sum])
-        self.writer = tf.train.SummaryWriter("./logs", self.sess.graph)
+        self.g_sum = tf.summary.merge([self.G_sum, self.g_loss_sum])
+        self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
 
         sample_files = data[0:self.sample_size]
         sample = [get_image(sample_file, self.image_size) for sample_file in sample_files]
@@ -129,7 +128,7 @@ class DCGAN(object):
         have_saved_inputs = False
 
         for epoch in xrange(config.epoch):
-            data = sorted(glob(os.path.join("./data", config.dataset, "train", "*.jpg")))
+            data = sorted(glob(os.path.join("./dataset", config.dataset, "train", "*.jpg")))
             batch_idxs = min(len(data), config.train_size) // config.batch_size
 
             for idx in xrange(0, batch_idxs):
@@ -179,7 +178,7 @@ class DCGAN(object):
 
     def save(self, checkpoint_dir, step):
         model_name = "DCGAN.model"
-        model_dir = "%s_%s" % (self.dataset_name, self.batch_size)
+        model_dir = "%s_%s" % (self.dataset, self.batch_size)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
         if not os.path.exists(checkpoint_dir):
@@ -192,7 +191,7 @@ class DCGAN(object):
     def load(self, checkpoint_dir):
         print(" [*] Reading checkpoints...")
 
-        model_dir = "%s_%s" % (self.dataset_name, self.batch_size)
+        model_dir = "%s_%s" % (self.dataset, self.batch_size)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
