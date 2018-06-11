@@ -16,10 +16,19 @@ def doresize(x, shape):
     return y
 
 class DCGAN(object):
-    def __init__(self, sess, image_size=128, is_crop=True,
-                 batch_size=64, image_shape=[128, 128, 3],
-                 y_dim=None, z_dim=120, gf_dim=64, df_dim=64,
-                 gfc_dim=1024, dfc_dim=1024, c_dim=3, dataset_name='default',
+    def __init__(self, sess,
+                 image_size=128,
+                 is_crop=True,
+                 batch_size=64,
+                 image_shape,
+                 y_dim=None,
+                 z_dim=120,
+                 gf_dim=64,
+                 df_dim=64,
+                 gfc_dim=1024,
+                 dfc_dim=1024,
+                 c_dim=3,
+                 dataset_name=None,
                  checkpoint_dir=None):
         """
 
@@ -41,6 +50,7 @@ class DCGAN(object):
         self.input_size = 32
         self.sample_size = batch_size
         self.image_shape = image_shape
+        self.dataset_name = dataset_name
 
         self.y_dim = y_dim
         self.z_dim = z_dim
@@ -53,7 +63,6 @@ class DCGAN(object):
 
         self.c_dim = 3
 
-        self.dataset_name = dataset_name
         self.checkpoint_dir = checkpoint_dir
         self.build_model()
 
@@ -62,10 +71,15 @@ class DCGAN(object):
         self.inputs = tf.placeholder(tf.float32, [self.batch_size, self.input_size, self.input_size, 3],
                                     name='real_images')
         try:
-            self.up_inputs = tf.image.resize_images(self.inputs, self.image_shape[0], self.image_shape[1], tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+            self.up_inputs = tf.image.resize_images(self.inputs,
+                                                    self.image_shape[0],
+                                                    self.image_shape[1],
+                                                    tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         except ValueError:
             # newer versions of tensorflow
-            self.up_inputs = tf.image.resize_images(self.inputs, [self.image_shape[0], self.image_shape[1]], tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+            self.up_inputs = tf.image.resize_images(self.inputs,
+                                                    [self.image_shape[0], self.image_shape[1]],
+                                                    tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
         self.images = tf.placeholder(tf.float32, [self.batch_size] + self.image_shape,
                                     name='real_images')
