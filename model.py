@@ -10,10 +10,12 @@ from subpixel import PS
 from ops import *
 from utils import *
 
+
 def doresize(x, shape):
-    x = np.copy((x+1.)*127.5).astype("uint8")
+    x = np.copy((x + 1.) * 127.5).astype("uint8")
     y = imresize(x, shape)
     return y
+
 
 class DCGAN(object):
     def __init__(self,sess,
@@ -81,17 +83,11 @@ class DCGAN(object):
                                         name='sample_images')
 
         self.G = self.generator(self.inputs)
-
         self.G_sum = tf.summary.image("G", self.G)
-
         self.g_loss = tf.reduce_mean(tf.square(self.images-self.G))
-
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
-
         t_vars = tf.trainable_variables()
-
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
-
         self.saver = tf.train.Saver()
 
     def train(self, config):
@@ -101,20 +97,26 @@ class DCGAN(object):
 
         g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
                           .minimize(self.g_loss, var_list=self.g_vars)
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         self.saver = tf.train.Saver()
         self.g_sum = tf.summary.merge([self.G_sum, self.g_loss_sum])
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
 
         sample_files = data[0:self.sample_size]
-        sample = [get_image(sample_file, self.image_size) for sample_file in sample_files]
+        sample = [get_image(sample_file) for sample_file in sample_files]
         sample_inputs = [doresize(xx, [self.input_size,]*2) for xx in sample]
         sample_images = np.array(sample).astype(np.float32)
         sample_input_images = np.array(sample_inputs).astype(np.float32)
 
-        save_images(sample_input_images, [8, 8], './samples/inputs_small.png')
-        save_images(sample_images, [8, 8], './samples/reference.png')
+        model_dir = "%s_%s" % (self.dataset, self.batch_size)
+
+        if not os.path.exists("./samples/" + model_dir):
+            os.mkdir(os.path.join("./samples", model_dir))
+        loss_log_file = open(os.path.join("./samples", model_dir, "g_loss.log"), "w+")
+
+        save_images(sample_input_images, [8, 8], os.path.join("./samples", model_dir, 'inputs_small.png'))
+        save_images(sample_images, [8, 8], os.path.join("./samples", model_dir, 'reference.png'))
 
         counter = 1
         start_time = time.time()
@@ -133,7 +135,7 @@ class DCGAN(object):
 
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*config.batch_size:(idx+1)*config.batch_size]
-                batch = [get_image(batch_file, self.image_size) for batch_file in batch_files]
+                batch = [get_image(batch_file) for batch_file in batch_files]
                 input_batch = [doresize(xx, [self.input_size,]*2) for xx in batch]
                 batch_images = np.array(batch).astype(np.float32)
                 batch_inputs = np.array(input_batch).astype(np.float32)
@@ -154,14 +156,15 @@ class DCGAN(object):
                         feed_dict={self.inputs: sample_input_images, self.images: sample_images}
                     )
                     if not have_saved_inputs:
-                        save_images(up_inputs, [8, 8], './samples/inputs.png')
+                        save_images(up_inputs, [8, 8], os.path.join("./samples", model_dir, './inputs.png'))
                         have_saved_inputs = True
-                    save_images(samples, [8, 8],
-                                './samples/valid_%s_%s.png' % (epoch, idx))
-                    print("[Sample] g_loss: %.8f" % (g_loss))
+                    save_images(samples, [8, 8], os.path.join("./samples",
+                                                              model_dir, "valid_%s_%s.png" % (epoch, idx)))
+                    loss_log_file.write("[Sample] g_loss: %.8f" % g_loss)
 
                 if np.mod(counter, 500) == 2:
                     self.save(config.checkpoint_dir, counter)
+        loss_log_file.close()
 
     def generator(self, z):
         # project `z` and reshape

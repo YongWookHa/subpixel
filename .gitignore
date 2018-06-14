@@ -91,3 +91,6 @@ ENV/
 #YongWook 
 .idea
 dataset/
+checkpoint/
+logs/
+samples/

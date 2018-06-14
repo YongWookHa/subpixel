@@ -14,8 +14,18 @@ pp = pprint.PrettyPrinter()
 
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 
-def get_image(image_path, image_size):
-    return transform(imread(image_path), image_size)
+def peak_signal_to_noise_ratio (true, pred):
+    """Image quality metric based on maximal signal power vs. power of the noise.
+      Args:
+        true: the ground truth image.
+        pred: the predicted image.
+      Returns:
+        peak signal to noise ratio (PSNR)
+    """
+    return 10.0 * tf.log(1.0 / mean_squared_error(true, pred)) / tf.log(10.0)
+
+def get_image(image_path):
+    return transform(imread(image_path))
 
 def save_images(images, size, image_path):
     num_im = size[0] * size[1]
@@ -23,9 +33,6 @@ def save_images(images, size, image_path):
 
 def imread(path):
     return scipy.misc.imread(path).astype(np.float)
-
-def merge_images(images, size):
-    return inverse_transform(images)
 
 def merge(images, size):
     h, w = images.shape[1], images.shape[2]
@@ -40,10 +47,10 @@ def merge(images, size):
 def imsave(images, size, path):
     return scipy.misc.imsave(path, merge(images, size))
 
-def transform(image, npx=128):
+
+def transform(image):
     # npx : # of pixels width/height of image
-    cropped_image = image
-    return np.array(cropped_image)/127.5 - 1.
+    return np.array(image)/127.5 - 1.
 
 def inverse_transform(images):
     return (images+1.)/2.
