@@ -1,6 +1,7 @@
 from __future__ import division
 import os
 import time
+from datetime import datetime
 from glob import glob
 import tensorflow as tf
 from six.moves import xrange
@@ -60,6 +61,11 @@ class DCGAN(object):
         self.dfc_dim = dfc_dim
 
         self.checkpoint_dir = checkpoint_dir
+
+        today = datetime.today()
+        time_now = "%s%s_%s%s" % (today.month, today.day, today.hour, today.minute)
+        self.model_dir = "%s_%s_%s" % (self.dataset, self.batch_size, time_now)
+
         self.build_model()
 
     def build_model(self):
@@ -109,14 +115,13 @@ class DCGAN(object):
         sample_images = np.array(sample).astype(np.float32)
         sample_input_images = np.array(sample_inputs).astype(np.float32)
 
-        model_dir = "%s_%s" % (self.dataset, self.batch_size)
 
-        if not os.path.exists("./samples/" + model_dir):
-            os.mkdir(os.path.join("./samples", model_dir))
-        loss_log_file = open(os.path.join("./samples", model_dir, "g_loss.log"), "w+")
+        if not os.path.exists("./samples/" + self.model_dir):
+            os.mkdir(os.path.join("./samples", self.model_dir))
+        #loss_log_file = open(os.path.join("./samples", self.model_dir, "g_loss.log"), "w+")
 
-        save_images(sample_input_images, [8, 8], os.path.join("./samples", model_dir, 'inputs_small.png'))
-        save_images(sample_images, [8, 8], os.path.join("./samples", model_dir, 'reference.png'))
+        save_images(sample_input_images, [8, 8], os.path.join("./samples", self.model_dir, 'inputs_small.png'))
+        save_images(sample_images, [8, 8], os.path.join("./samples", self.model_dir, 'reference.png'))
 
         counter = 1
         start_time = time.time()
@@ -150,21 +155,22 @@ class DCGAN(object):
                     % (epoch, idx, batch_idxs,
                         time.time() - start_time, errG))
 
-                if np.mod(counter, 100) == 1:
+                if np.mod(counter, 170) == 1:
                     samples, g_loss, up_inputs = self.sess.run(
                         [self.G, self.g_loss, self.up_inputs],
                         feed_dict={self.inputs: sample_input_images, self.images: sample_images}
                     )
                     if not have_saved_inputs:
-                        save_images(up_inputs, [8, 8], os.path.join("./samples", model_dir, './inputs.png'))
+                        save_images(up_inputs, [8, 8], os.path.join("./samples", self.model_dir, './inputs.png'))
                         have_saved_inputs = True
                     save_images(samples, [8, 8], os.path.join("./samples",
-                                                              model_dir, "valid_%s_%s.png" % (epoch, idx)))
-                    loss_log_file.write("[Sample] g_loss: %.8f" % g_loss)
+                                                              self.model_dir, "valid_%s_%s.png" % (epoch, idx)))
+                    #loss_log_file.write("[Sample] g_loss: %.8f" % g_loss)
+
 
                 if np.mod(counter, 500) == 2:
                     self.save(config.checkpoint_dir, counter)
-        loss_log_file.close()
+        #loss_log_file.close()
 
     def generator(self, z):
         # project `z` and reshape
@@ -180,9 +186,8 @@ class DCGAN(object):
         return tf.nn.tanh(h2)
 
     def save(self, checkpoint_dir, step):
-        model_name = "DCGAN.model"
-        model_dir = "%s_%s" % (self.dataset, self.batch_size)
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+        model_name = "subpixel.model"
+        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
@@ -193,9 +198,7 @@ class DCGAN(object):
 
     def load(self, checkpoint_dir):
         print(" [*] Reading checkpoints...")
-
-        model_dir = "%s_%s" % (self.dataset, self.batch_size)
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
