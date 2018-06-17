@@ -38,8 +38,8 @@ class DCGAN(object):
             batch_size: The size of batch. Should be specified before training.
             y_dim: (optional) Dimension of dim for y. [None]
             z_dim: (optional) Dimension of dim for Z. [100]
-            gf_dim: (optional) Dimension of gen filters in first conv layer. [64]
-            df_dim: (optional) Dimension of discrim filters in first conv layer. [64]
+            gf_dim: (optional) Dimension of gen filters in conv layer. [64]
+            df_dim: (optional) Dimension of discrim filters in conv layer. [64]
             gfc_dim: (optional) Dimension of gen untis for for fully connected layer. [1024]
             dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
         """
@@ -63,7 +63,10 @@ class DCGAN(object):
         self.checkpoint_dir = checkpoint_dir
 
         today = datetime.today()
-        time_now = "%s%s_%s%s" % (today.month, today.day, today.hour, today.minute)
+        time_now = "%s%s_%s%s" % (str(today.month).zfill(2),
+                                  str(today.day).zfill(2),
+                                  str(today.hour).zfill(2),
+                                  str(today.minute).zfill(2))
         self.model_dir = "%s_%s_%s" % (self.dataset, self.batch_size, time_now)
 
         self.build_model()
@@ -90,8 +93,16 @@ class DCGAN(object):
 
         self.G = self.generator(self.inputs)
         self.G_sum = tf.summary.image("G", self.G)
-        self.g_loss = tf.reduce_mean(tf.square(self.images-self.G))
+
+        mse = tf.losses.mean_squared_error(self.images, self.G, weights=1.0)
+        psnr = tf.reduce_mean(tf.image.psnr(self.images, self.G, max_val=1.0))
+
+        self.g_loss = tf.reduce_mean(tf.square(self.images - self.G))
+
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
+        self.mse = tf.summary.scalar("mse", mse)
+        self.psnr = tf.summary.scalar("psnr", psnr)
+
         t_vars = tf.trainable_variables()
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
         self.saver = tf.train.Saver()
@@ -106,8 +117,8 @@ class DCGAN(object):
         tf.global_variables_initializer().run()
 
         self.saver = tf.train.Saver()
-        self.g_sum = tf.summary.merge([self.G_sum, self.g_loss_sum])
-        self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
+        self.g_sum = tf.summary.merge([self.G_sum, self.g_loss_sum, self.mse, self.psnr])
+        self.writer = tf.summary.FileWriter(os.path.join("./logs",  self.model_dir), self.sess.graph)
 
         sample_files = data[0:self.sample_size]
         sample = [get_image(sample_file) for sample_file in sample_files]
@@ -118,7 +129,8 @@ class DCGAN(object):
 
         if not os.path.exists("./samples/" + self.model_dir):
             os.mkdir(os.path.join("./samples", self.model_dir))
-        #loss_log_file = open(os.path.join("./samples", self.model_dir, "g_loss.log"), "w+")
+
+        # loss_log_file = open(os.path.join("./samples", self.model_dir, "g_loss.log"), "w+")
 
         save_images(sample_input_images, [8, 8], os.path.join("./samples", self.model_dir, 'inputs_small.png'))
         save_images(sample_images, [8, 8], os.path.join("./samples", self.model_dir, 'reference.png'))
@@ -174,16 +186,22 @@ class DCGAN(object):
 
     def generator(self, z):
         # project `z` and reshape
-        self.h0, self.h0_w, self.h0_b = deconv2d(z, [self.batch_size, 32, 32, self.gf_dim], k_h=1, k_w=1, d_h=1, d_w=1, name='g_h0', with_w=True)
+        self.h0, self.h0_w, self.h0_b = deconv2d(z, [self.batch_size, 32, 32, self.gf_dim], k_h=3, k_w=3, d_h=1, d_w=1,
+                                                 name='g_h0', with_w=True)
         h0 = lrelu(self.h0)
 
-        self.h1, self.h1_w, self.h1_b = deconv2d(h0, [self.batch_size, 32, 32, self.gf_dim], name='g_h1', d_h=1, d_w=1, with_w=True)
+        self.h1, self.h1_w, self.h1_b = deconv2d(h0, [self.batch_size, 32, 32, self.gf_dim], name='g_h1', k_h=1, k_w=1, d_h=1, d_w=1,
+                                                 with_w=True)
         h1 = lrelu(self.h1)
 
-        h2, self.h2_w, self.h2_b = deconv2d(h1, [self.batch_size, 32, 32, 3*16], d_h=1, d_w=1, name='g_h2', with_w=True)
-        h2 = PS(h2, 4, color=True)
+        self.h2, self.h2_w, self.h2_b = deconv2d(h1, [self.batch_size, 32, 32, self.gf_dim], name='g_h2',  k_h=1, k_w=1, d_h=1, d_w=1,
+                                                 with_w=True)
+        h2 = lrelu(self.h1)
 
-        return tf.nn.tanh(h2)
+        h3, self.h3_w, self.h3_b = deconv2d(h2, [self.batch_size, 32, 32, 3*16], d_h=1, d_w=1, name='g_h3', with_w=True)
+        h3 = PS(h3, 4, color=True)
+
+        return tf.nn.tanh(h3)
 
     def save(self, checkpoint_dir, step):
         model_name = "subpixel.model"
