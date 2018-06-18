@@ -95,13 +95,15 @@ class DCGAN(object):
         self.G_sum = tf.summary.image("G", self.G)
 
         mse = tf.losses.mean_squared_error(self.images, self.G, weights=1.0)
-        psnr = tf.reduce_mean(tf.image.psnr(self.images, self.G, max_val=1.0))
+        psnr = tf.reduce_mean(tf.image.psnr(self.images, self.G, max_val=255))
+        ssim = tf.reduce_mean(tf.image.ssim(self.images, self.G, max_val=1.0))
 
-        self.g_loss = tf.reduce_mean(tf.square(self.images - self.G))
+        self.g_loss = 100 * mse - ssim
 
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         self.mse = tf.summary.scalar("mse", mse)
         self.psnr = tf.summary.scalar("psnr", psnr)
+        self.ssim = tf.summary.scalar("ssim", ssim)
 
         t_vars = tf.trainable_variables()
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
@@ -117,7 +119,7 @@ class DCGAN(object):
         tf.global_variables_initializer().run()
 
         self.saver = tf.train.Saver()
-        self.g_sum = tf.summary.merge([self.G_sum, self.g_loss_sum, self.mse, self.psnr])
+        self.g_sum = tf.summary.merge([self.G_sum, self.g_loss_sum, self.mse, self.psnr, self.ssim])
         self.writer = tf.summary.FileWriter(os.path.join("./logs",  self.model_dir), self.sess.graph)
 
         sample_files = data[0:self.sample_size]
@@ -194,9 +196,10 @@ class DCGAN(object):
                                                  with_w=True)
         h1 = lrelu(self.h1)
 
-        self.h2, self.h2_w, self.h2_b = deconv2d(h1, [self.batch_size, 32, 32, self.gf_dim], name='g_h2',  k_h=1, k_w=1, d_h=1, d_w=1,
+        self.h2, self.h2_w, self.h2_b = deconv2d(h1, [self.batch_size, 32, 32, self.gf_dim], name='g_h2', k_h=1, k_w=1, d_h=1, d_w=1,
                                                  with_w=True)
-        h2 = lrelu(self.h1)
+
+        h2 = lrelu(self.h2)
 
         h3, self.h3_w, self.h3_b = deconv2d(h2, [self.batch_size, 32, 32, 3*16], d_h=1, d_w=1, name='g_h3', with_w=True)
         h3 = PS(h3, 4, color=True)
