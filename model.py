@@ -72,6 +72,7 @@ class DCGAN(object):
 
         self.build_model()
 
+
     def build_model(self):
 
         self.inputs = tf.placeholder(tf.float32, [self.batch_size, self.input_size, self.input_size, 3],
