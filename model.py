@@ -256,14 +256,14 @@ class DCGAN(object):
 
             net, net_w, net_b = deconv2d(net, [self.batch_size, 32, 32, self.gf_dim], name='g_h1', k_h=1, k_w=1, d_h=1, d_w=1,
                                                      with_w=True)
-            net = lrelu(self.h1)
+            net = lrelu(net)
 
             net, net_w, net_b = deconv2d(net, [self.batch_size, 32, 32, self.gf_dim], name='g_h2', d_h=1, d_w=1,
                                                      with_w=True)
-            net = lrelu(self.h2)
+            net = lrelu(net)
 
             net, net_w, net_b = deconv2d(net, [self.batch_size, 32, 32, 3*16], d_h=1, d_w=1, name='g_h3', with_w=True)
-            net = lrelu(self.h3)
+            net = lrelu(net)
 
             net = PS(net, 4, color=True)
 
