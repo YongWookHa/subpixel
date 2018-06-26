@@ -250,24 +250,24 @@ class DCGAN(object):
 
     def generator(self, inp):
         with tf.variable_scope("generator") as scope:
-            self.h0, self.h0_w, self.h0_b = deconv2d(inp, [self.batch_size, 32, 32, self.gf_dim], k_h=1, k_w=1, d_h=1, d_w=1,
+            net, net_w, net_b = deconv2d(inp, [self.batch_size, 32, 32, self.gf_dim], k_h=1, k_w=1, d_h=1, d_w=1,
                                                      name='g_h0', with_w=True)
-            h0 = lrelu(self.h0)
+            net = lrelu(net)
 
-            self.h1, self.h1_w, self.h1_b = deconv2d(h0, [self.batch_size, 32, 32, self.gf_dim], name='g_h1', k_h=1, k_w=1, d_h=1, d_w=1,
+            net, net_w, net_b = deconv2d(net, [self.batch_size, 32, 32, self.gf_dim], name='g_h1', k_h=1, k_w=1, d_h=1, d_w=1,
                                                      with_w=True)
-            h1 = lrelu(self.h1)
+            net = lrelu(self.h1)
 
-            self.h2, self.h2_w, self.h2_b = deconv2d(h1, [self.batch_size, 32, 32, self.gf_dim], name='g_h2', d_h=1, d_w=1,
+            net, net_w, net_b = deconv2d(net, [self.batch_size, 32, 32, self.gf_dim], name='g_h2', d_h=1, d_w=1,
                                                      with_w=True)
-            h2 = lrelu(self.h2)
+            net = lrelu(self.h2)
 
-            self.h3, self.h3_w, self.h3_b = deconv2d(h2, [self.batch_size, 32, 32, 3*16], d_h=1, d_w=1, name='g_h3', with_w=True)
-            h3 = lrelu(self.h3)
+            net, net_w, net_b = deconv2d(net, [self.batch_size, 32, 32, 3*16], d_h=1, d_w=1, name='g_h3', with_w=True)
+            net = lrelu(self.h3)
 
-            h4 = PS(h3, 4, color=True)
+            net = PS(net, 4, color=True)
 
-            return tf.nn.tanh(h4)
+            return tf.nn.tanh(net)
 
     def discriminator(self, inp, reuse=False):
         with tf.variable_scope("discriminator") as scope:
